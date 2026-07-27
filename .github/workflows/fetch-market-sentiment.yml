@@ -1,0 +1,36 @@
+name: Fetch 2026 A-share market sentiment
+
+on:
+  push:
+    branches:
+      - temp-market-data-20260727
+    paths:
+      - '.github/workflows/fetch-market-sentiment.yml'
+      - 'scripts/fetch_market_sentiment_2026.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: temp-market-data-20260727
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --upgrade pip requests
+      - run: python scripts/fetch_market_sentiment_2026.py
+      - name: Commit generated data
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add data/market_sentiment_2026.csv data/market_sentiment_raw/
+          if ! git diff --cached --quiet; then
+            git commit -m 'Generate 2026 market sentiment data [skip ci]'
+            git push origin temp-market-data-20260727
+          fi
