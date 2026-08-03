@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Fetch 2026 A-share historical market breadth from a single Kaipanla/LonghuVIP endpoint.
+"""One-off fetch of late-July 2026 A-share market breadth.
 
-This file is used only on the temporary branch temp-market-data-20260727.
-Output fields are kept raw and converted to numeric values without mixing sources.
+The output preserves the same Kaipanla/LonghuVIP field mapping used by the
+existing spreadsheet so that the historical series remains single-source.
 """
 from __future__ import annotations
 
@@ -15,8 +15,8 @@ from pathlib import Path
 
 import requests
 
-START = date(2026, 1, 1)
-END = date(2026, 7, 24)
+START = date(2026, 7, 27)
+END = date(2026, 7, 31)
 URL = "https://apphis.longhuvip.com/w1/api/index.php"
 OUT = Path("data/market_sentiment_2026.csv")
 RAW_DIR = Path("data/market_sentiment_raw")
@@ -51,23 +51,31 @@ def fetch_one(day: date, session: requests.Session) -> dict | None:
     }
     for attempt in range(4):
         try:
-            r = session.post(URL, params=params, data=payload, headers=HEADERS, timeout=25)
-            r.raise_for_status()
-            result = r.json()
+            response = session.post(
+                URL,
+                params=params,
+                data=payload,
+                headers=HEADERS,
+                timeout=25,
+            )
+            response.raise_for_status()
+            result = response.json()
             if str(result.get("errcode", "0")) not in {"0", ""}:
                 return None
             info = result.get("info") or {}
             if not isinstance(info, dict) or not info:
                 return None
-            RAW_DIR.mkdir(parents=True, exist_ok=True)
-            (RAW_DIR / f"{day_s}.json").write_text(
-                json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
-            )
+
             up = to_num(info.get("SZJS"))
             down = to_num(info.get("XDJS"))
-            # Non-trading days usually return no meaningful breadth counts.
             if (up in (None, 0.0)) and (down in (None, 0.0)):
                 return None
+
+            RAW_DIR.mkdir(parents=True, exist_ok=True)
+            (RAW_DIR / f"{day_s}.json").write_text(
+                json.dumps(result, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
             return {
                 "date": day_s,
                 "market_turnover_raw": to_num(info.get("qscln")),
@@ -116,8 +124,8 @@ def main() -> None:
         "actual_limit_down_count",
         "response_date",
     ]
-    with OUT.open("w", newline="", encoding="utf-8-sig") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
+    with OUT.open("w", newline="", encoding="utf-8-sig") as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
         writer.writerows(rows)
 
