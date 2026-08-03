@@ -3,13 +3,10 @@ name: Fetch 2026 A-share market sentiment
 on:
   push:
     branches:
-      - temp-market-data-20260727
+      - temp-market-data-20260803-kph
     paths:
       - '.github/workflows/fetch-market-sentiment.yml'
       - 'scripts/fetch_market_sentiment_2026.py'
-  pull_request:
-    branches:
-      - main
   workflow_dispatch:
 
 permissions:
@@ -18,7 +15,7 @@ permissions:
 jobs:
   fetch:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -28,7 +25,7 @@ jobs:
       - run: python scripts/fetch_market_sentiment_2026.py
       - uses: actions/upload-artifact@v4
         with:
-          name: market-sentiment-2026
+          name: market-sentiment-late-july-2026
           path: |
             data/market_sentiment_2026.csv
             data/market_sentiment_raw/
