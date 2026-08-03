@@ -7,6 +7,9 @@ on:
     paths:
       - '.github/workflows/fetch-market-sentiment.yml'
       - 'scripts/fetch_market_sentiment_2026.py'
+  pull_request:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
