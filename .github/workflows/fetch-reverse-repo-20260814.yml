@@ -22,6 +22,18 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install --upgrade pip requests beautifulsoup4
+      - name: Patch zero-operation parser
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('scripts/fetch_reverse_repo_update_20260814.py')
+          text = path.read_text(encoding='utf-8')
+          old = '        amount = None\n        for pattern in patterns:'
+          new = '        amount = 0 if "操作量为零" in text else None\n        for pattern in patterns:'
+          if old not in text:
+              raise SystemExit('parser patch target missing')
+          path.write_text(text.replace(old, new), encoding='utf-8')
+          PY
       - run: python scripts/fetch_reverse_repo_update_20260814.py
       - uses: actions/upload-artifact@v4
         with:
