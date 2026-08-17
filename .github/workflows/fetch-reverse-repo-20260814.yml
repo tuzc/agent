@@ -6,7 +6,7 @@ on:
       - temp-reverse-repo-20260817
     paths:
       - '.github/workflows/fetch-reverse-repo-20260814.yml'
-      - 'scripts/fetch_reverse_repo_update_20260814.py'
+      - 'scripts/fetch_reverse_repo_update_20260814_v2.py'
   workflow_dispatch:
 
 permissions:
@@ -22,62 +22,7 @@ jobs:
         with:
           python-version: '3.12'
       - run: python -m pip install --upgrade pip requests beautifulsoup4
-      - name: Patch zero-operation parser and daily-index source
-        run: |
-          python - <<'PY'
-          from pathlib import Path
-          path = Path('scripts/fetch_reverse_repo_update_20260814.py')
-          text = path.read_text(encoding='utf-8')
-          old = '        amount = None\n        for pattern in patterns:'
-          new = '        amount = 0 if "操作量为零" in text else None\n        for pattern in patterns:'
-          if old not in text:
-              raise SystemExit('zero parser patch target missing')
-          text = text.replace(old, new)
-
-          marker = '\ndef main() -> None:\n'
-          override = r'''
-
-def parse_index_snapshot(day: date) -> dict:
-    url = "https://push2his.eastmoney.com/api/qt/stock/kline/get"
-    day_s = day.strftime("%Y%m%d")
-    params = {
-        "secid": "1.000001",
-        "klt": "101",
-        "fqt": "0",
-        "fields1": "f1,f2,f3,f4,f5,f6",
-        "fields2": "f51,f52,f53,f54,f55,f56,f57,f58,f59,f60,f61",
-        "beg": day_s,
-        "end": day_s,
-    }
-    response = session.get(url, params=params, timeout=35)
-    response.raise_for_status()
-    payload = response.json()
-    klines = ((payload.get("data") or {}).get("klines") or [])
-    if len(klines) != 1:
-        raise RuntimeError(f"Eastmoney daily kline missing for {day}: {payload}")
-    parts = klines[0].split(",")
-    if len(parts) < 11:
-        raise RuntimeError(f"Unexpected kline for {day}: {klines[0]}")
-    trade_date, open_px, close_px, high_px, low_px, volume, amount, amplitude, pct, change, turnover = parts[:11]
-    close_value = float(close_px)
-    change_value = float(change)
-    return {
-        "date": day.isoformat(),
-        "prev_close": close_value - change_value,
-        "open": float(open_px),
-        "high": float(high_px),
-        "low": float(low_px),
-        "close": close_value,
-        "sse_turnover_yi": float(amount) / 1e8,
-        "source_url": response.url,
-    }
-'''
-          if marker not in text:
-              raise SystemExit('main marker missing')
-          text = text.replace(marker, override + marker)
-          path.write_text(text, encoding='utf-8')
-          PY
-      - run: python scripts/fetch_reverse_repo_update_20260814.py
+      - run: python scripts/fetch_reverse_repo_update_20260814_v2.py
       - uses: actions/upload-artifact@v4
         with:
           name: reverse-repo-update-20260814
